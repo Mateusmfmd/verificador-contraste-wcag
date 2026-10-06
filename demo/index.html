@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Demo — Verificador de contraste WCAG 2.2</title>
+    <style>
+      :root { color-scheme: light; font-family: system-ui, sans-serif; line-height: 1.5; }
+      body { margin: 0; background: #f4f6f8; color: #17202a; }
+      main { max-width: 58rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
+      h1 { margin-top: 0; }
+      .panel { background: #fff; border: 1px solid #c9d1d9; border-radius: .6rem; padding: 1rem; margin-block: 1rem; }
+      .fields { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+      label { display: block; font-weight: 700; }
+      .control { display: flex; align-items: center; gap: .65rem; margin-top: .35rem; }
+      input[type="color"] { width: 3rem; height: 2.5rem; padding: .15rem; }
+      input[type="text"] { min-width: 0; flex: 1; padding: .6rem; border: 1px solid #697586; border-radius: .3rem; font: inherit; }
+      .swatch { min-height: 7rem; display: grid; place-items: center; border-radius: .45rem; border: 1px solid #697586; margin-block: 1rem; }
+      .swatch span { padding: .4rem .7rem; font-size: 1.35rem; font-weight: 700; }
+      .result { border-left: .4rem solid #1769aa; padding: .5rem 1rem; background: #eef6ff; }
+      .result[data-state="fail"] { border-left-color: #b42318; background: #fff1f0; }
+      .ratio { font-size: 2rem; font-weight: 800; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: .6rem; border-bottom: 1px solid #c9d1d9; }
+      .pass { color: #176b3a; font-weight: 700; }
+      .fail { color: #b42318; font-weight: 700; }
+      .help { color: #44546a; font-size: .95rem; }
+      :focus-visible { outline: .2rem solid #005fcc; outline-offset: .15rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Verificador de contraste WCAG 2.2</h1>
+        <p>Informe as cores do texto e do fundo. O resultado considera AA e AAA para texto normal e grande.</p>
+      </header>
+
+      <section class="panel" aria-labelledby="controls-title">
+        <h2 id="controls-title">Cores</h2>
+        <div class="fields">
+          <div>
+            <label for="foreground-text">Cor do texto</label>
+            <div class="control">
+              <input id="foreground-picker" type="color" value="#1f2937" aria-label="Seletor visual da cor do texto">
+              <input id="foreground-text" type="text" value="#1f2937" autocomplete="off" spellcheck="false" aria-describedby="color-help">
+            </div>
+          </div>
+          <div>
+            <label for="background-text">Cor do fundo</label>
+            <div class="control">
+              <input id="background-picker" type="color" value="#ffffff" aria-label="Seletor visual da cor do fundo">
+              <input id="background-text" type="text" value="#ffffff" autocomplete="off" spellcheck="false" aria-describedby="color-help">
+            </div>
+          </div>
+        </div>
+        <p id="color-help" class="help">Use #RGB, #RRGGBB, rgb() ou rgba(). Cores inválidas serão informadas abaixo.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="preview-title">
+        <h2 id="preview-title">Pré-visualização</h2>
+        <div id="swatch" class="swatch">
+          <span id="preview-text">Texto de exemplo</span>
+        </div>
+        <div id="result" class="result" role="status" aria-live="polite" aria-atomic="true">
+          <div>Razão de contraste: <span id="ratio" class="ratio">—</span></div>
+          <p id="message">Preencha cores válidas para calcular.</p>
+          <table>
+            <caption class="help">Critérios de conformidade</caption>
+            <thead><tr><th scope="col">Tamanho</th><th scope="col">AA</th><th scope="col">AAA</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Texto normal</th><td id="normal-aa">—</td><td id="normal-aaa">—</td></tr>
+              <tr><th scope="row">Texto grande</th><td id="large-aa">—</td><td id="large-aaa">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { analyzeContrast } from '../dist/src/index.js';
+
+      const $ = (id) => document.getElementById(id);
+      const foregroundText = $('foreground-text');
+      const backgroundText = $('background-text');
+      const foregroundPicker = $('foreground-picker');
+      const backgroundPicker = $('background-picker');
+      const swatch = $('swatch');
+      const previewText = $('preview-text');
+      const result = $('result');
+
+      function setCell(id, passes) {
+        const cell = $(id);
+        cell.textContent = passes ? 'Passa' : 'Não passa';
+        cell.className = passes ? 'pass' : 'fail';
+      }
+
+      function update() {
+        const foreground = foregroundText.value.trim();
+        const background = backgroundText.value.trim();
+        previewText.style.color = foreground;
+        swatch.style.backgroundColor = background;
+        try {
+          const analysis = analyzeContrast(foreground, background);
+          $('ratio').textContent = analysis.ratioFormatted;
+          $('message').textContent = analysis.message;
+          setCell('normal-aa', analysis.normalText.passesAA);
+          setCell('normal-aaa', analysis.normalText.passesAAA);
+          setCell('large-aa', analysis.largeText.passesAA);
+          setCell('large-aaa', analysis.largeText.passesAAA);
+          result.dataset.state = analysis.normalText.passesAA ? 'pass' : 'fail';
+        } catch (error) {
+          $('ratio').textContent = '—';
+          $('message').textContent = error instanceof Error ? error.message : 'Não foi possível calcular o contraste.';
+          for (const id of ['normal-aa', 'normal-aaa', 'large-aa', 'large-aaa']) $(id).textContent = '—';
+          result.dataset.state = 'fail';
+        }
+      }
+
+      foregroundPicker.addEventListener('input', () => { foregroundText.value = foregroundPicker.value; update(); });
+      backgroundPicker.addEventListener('input', () => { backgroundText.value = backgroundPicker.value; update(); });
+      foregroundText.addEventListener('input', update);
+      backgroundText.addEventListener('input', update);
+      update();
+    </script>
+  </body>
+</html>
