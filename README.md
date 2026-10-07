@@ -1,4 +1,5 @@
 # verificador-contraste-wcag
+[![CI](https://github.com/Mateusmfmd/verificador-contraste-wcag/actions/workflows/ci.yml/badge.svg)](https://github.com/Mateusmfmd/verificador-contraste-wcag/actions/workflows/ci.yml)
 
 Biblioteca TypeScript pequena e **sem dependências de runtime** para calcular contraste de cores segundo os critérios de contraste da **WCAG 2.2**. Ela calcula luminância relativa, razão de contraste, classifica AA/AAA para texto normal e grande e produz mensagens orientativas em português.
 
